@@ -1,0 +1,12 @@
+{
+  "name": "kipphi-canvas-editor",
+  "module": "index.ts",
+  "main": "index.js",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
