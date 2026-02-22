@@ -142,6 +142,8 @@ export class EventSequenceEditors extends EventTarget {
             (this as StripReadonly<this>)[type] = new NumericEventCurveEditor(EventType[type], this.canvas, this.clippingRect, this.operationList,this);
             this[type].active = false;
         }
+        (this as StripReadonly<this>).text = new TextEventSequenceEditor(EventType.text, this.canvas, this.clippingRect, this.operationList, this);
+        (this as StripReadonly<this>).color = new ColorEventSequenceEditor(EventType.color, this.canvas, this.clippingRect, this.operationList, this);
         this.bpm.target = this.operationList.chart.timeCalculator.bpmSequence; // 这个不会变
         on(["mousemove", "touchmove"], this.canvas, (event) => {
             this.activatedEditor.moveHandler(event);
@@ -220,16 +222,16 @@ export class EventSequenceEditors extends EventTarget {
                 // 理论上不需要，因为创建谱面的时候已经补上了这两个序列
                 
             });
-        }
         
-        // 文本
-        this.text.targetLine = targetLine;
-        this.text.target = targetLine.extendedLayer.text;
-        // 这里不要检测不存在创建，因为可能并不需要这么一个序列，而前面几种序列是刚需
-        // 颜色事件
-        this.color.targetLine = targetLine;
-        this.color.target = targetLine.extendedLayer.color;
-        // 颜色事件也是，并非刚需
+            // 文本
+            this.text.targetLine = targetLine;
+            this.text.target = targetLine.extendedLayer.text;
+            // 这里不要检测不存在创建，因为可能并不需要这么一个序列，而前面几种序列是刚需
+            // 颜色事件
+            this.color.targetLine = targetLine;
+            this.color.target = targetLine.extendedLayer.color;
+            // 颜色事件也是，并非刚需
+        }
 
         // BPM和缓动不附着在线上，无需添加其代码
         //*/
@@ -422,8 +424,6 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
         this.elementMatrixInverted = this.elementMatrix.invert();
 
         const resizeObserver = new ResizeObserver(() => {
-            this.innerHeight = clippingRect[3] - this.padding * 2;
-            this.innerWidth = clippingRect[2] - this.padding * 2;
             this.elementMatrix = identity
                 .scale(this.canvas.clientWidth / this.canvas.width, this.canvas.clientHeight / this.canvas.height);
             this.elementMatrixInverted = this.elementMatrix.invert();
@@ -1244,7 +1244,7 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
 }
 
 class TextEventSequenceEditor extends EventSequenceEditor<string> {
-    constructor(type: EventType.color, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
+    constructor(type: EventType.text, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
     }
     override moveHandler(event: MouseEvent | TouchEvent): void {
@@ -1390,7 +1390,7 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
 }
 
 class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
-    constructor(type: EventType.text, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
+    constructor(type: EventType.color, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
     }
     override moveHandler(event: MouseEvent | TouchEvent): void {
