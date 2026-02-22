@@ -112,7 +112,7 @@ export const getOffsetCoordFromEvent: (event: MouseEvent | TouchEvent, element: 
 export const getCanvasCoordFromEvent = 
 (event: MouseEvent | TouchEvent, canvas: HTMLCanvasElement, eleMatInv: Matrix33, canvasMatInv: Matrix33) => {
     const [x, y] = getOffsetCoordFromEvent(event, canvas);
-    return new Coordinate(x, y).mul(canvasMatInv).mul(eleMatInv);
+    return new Coordinate(x, y).mul(eleMatInv).mul(canvasMatInv);
 }
 
 export const getOffset = (element: HTMLElement) => {
