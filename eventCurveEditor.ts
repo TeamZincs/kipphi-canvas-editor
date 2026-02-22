@@ -583,7 +583,14 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
     }
     draw(beats?: number) {
         if (!this.target) {
-            this.context.fillText(messages.NO_TARGET(this.parentEditorSet.selectedLayer, EventType[this.type]), 0, 0)
+            const context = this.context
+            context.save();
+            const clippingRect = this.clippingRect;
+            context.clearRect(-clippingRect[2] / 2, -clippingRect[3] / 2, clippingRect[2], clippingRect[3]);
+            context.fillStyle = "#EEE";
+            context.textAlign = "center"
+            context.fillText(messages.NO_TARGET(this.parentEditorSet.selectedLayer, EventType[this.type]), 0, 0)
+            context.restore();
             return;
         }
         beats = beats || this.lastBeats || 0;
@@ -820,7 +827,7 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
             if (this.parentEditorSet.selectedLayer === "ex") {
                 return;
             }
-            const seq = this.operationList.chart.createEventNodeSequence(this.type, `#${line.id}.${this.parentEditorSet.selectedLayer}.${this.type}`);
+            const seq = this.operationList.chart.createEventNodeSequence(this.type, `#${line.id}.${this.parentEditorSet.selectedLayer}.${EventType[this.type]}`);
             // @ts-expect-error
             this.operationList.do(new O.JudgeLineENSChangeOperation(line, parseInt(this.parentEditorSet.selectedLayer), EventType[this.type], seq))
             // @ts-expect-error
@@ -829,7 +836,7 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
             if (this.parentEditorSet.selectedLayer !== "ex") {
                 return;
             }
-            const seq = this.operationList.chart.createEventNodeSequence(this.type, `#${line.id}.ex.${this.type}`);
+            const seq = this.operationList.chart.createEventNodeSequence(this.type, `#${line.id}.ex.${EventType[this.type]}`);
             // @ts-expect-error
             this.operationList.do(new O.JudgeLineExtendENSChangeOperation(line, EventType[this.type], seq as EventNodeSequence<string>))
             // @ts-expect-error
