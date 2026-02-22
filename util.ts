@@ -1,5 +1,9 @@
 import { Coordinate, type Matrix33 } from "kipphi-player";
 
+export type StripReadonly<T> = {
+    -readonly [P in keyof T]: T[P];
+}
+
 /**
  * 对于一个值，在一系列可吸附值上寻找最接近的值
  * @param sortedAttachable 

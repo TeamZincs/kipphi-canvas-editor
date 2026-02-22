@@ -1,8 +1,8 @@
-import { Coordinate, drawLine, identity, Images, Matrix33 } from "kipphi-player";
+import { Coordinate, drawLine, identity, Images, Matrix33, rgb } from "kipphi-player";
 import { KPAEvent, SelectState, type LTWH } from "./notesEditor";
-import { BezierEasing, BPMEndNode, BPMStartNode, EasedEvaluator, Easing, easingArray, easingMap, EventEndNode, EventNode, EventNodeLike, EventNodeSequence, EventStartNode, EventType, EventValueType, fixedEasing, JudgeLine, linearEasing, NodeType, NormalEasing, Note, Op as O, TC, TemplateEasing, type EventValueESType, type SpeedENS, type TimeT } from "kipphi";
+import { BezierEasing, BPMEndNode, BPMStartNode, ColorEasedEvaluator, EasedEvaluator, Easing, easingArray, easingMap, EventEndNode, EventNode, EventNodeLike, EventNodeSequence, EventStartNode, EventType, EventValueType, ExpressionEvaluator, fixedEasing, JudgeLine, linearEasing, MacroEvaluator, NodeType, NormalEasing, Note, Op as O, TC, TemplateEasing, type EventValueESType, type NonLastStartNode, type RGB, type SpeedENS, type TimeT } from "kipphi";
 import { SelectionManager } from "./selectionManager";
-import { drawBezierCurve, getCanvasCoordFromEvent, getOffsetCoordFromEvent, getPercentile, on } from "./util";
+import { drawBezierCurve, getCanvasCoordFromEvent, getOffsetCoordFromEvent, getPercentile, on, type StripReadonly } from "./util";
 import { messages } from "./messages";
 
 
@@ -90,6 +90,8 @@ const numericEventTypeKeys = ["moveX", "moveY", "alpha", "rotate", "speed", "eas
 type LayerID = "0" | "1" | "2" | "3" | "ex";
 type ChangeTargetOptions = { judgeLine?: JudgeLine, layerID?: LayerID };
 
+
+
 /**
  * @example
  * 
@@ -107,19 +109,19 @@ export class EventSequenceEditors extends EventTarget {
     timeDivisor: number = 4;
 
 
-    moveX: NumericEventCurveEditor;
-    moveY: NumericEventCurveEditor;
-    alpha: NumericEventCurveEditor;
-    rotate: NumericEventCurveEditor;
-    speed: NumericEventCurveEditor;
-    easing: NumericEventCurveEditor;
-    bpm: NumericEventCurveEditor;
+    readonly moveX: NumericEventCurveEditor;
+    readonly moveY: NumericEventCurveEditor;
+    readonly alpha: NumericEventCurveEditor;
+    readonly rotate: NumericEventCurveEditor;
+    readonly speed: NumericEventCurveEditor;
+    readonly easing: NumericEventCurveEditor;
+    readonly bpm: NumericEventCurveEditor;
 
-    text: TextEventSequenceEditor;
-    color: ColorEventSequenceEditor;
+    readonly text: TextEventSequenceEditor;
+    readonly color: ColorEventSequenceEditor;
 
-    scaleX: NumericEventCurveEditor;
-    scaleY: NumericEventCurveEditor;
+    readonly scaleX: NumericEventCurveEditor;
+    readonly scaleY: NumericEventCurveEditor;
 
     lastBeats: number;
     easingBeats: number = 0;
@@ -137,7 +139,7 @@ export class EventSequenceEditors extends EventTarget {
     }
     init() {
         for (const type of numericEventTypeKeys) {
-            this[type] = new NumericEventCurveEditor(EventType[type], this.canvas, this.clippingRect, this.operationList,this);
+            (this as StripReadonly<this>)[type] = new NumericEventCurveEditor(EventType[type], this.canvas, this.clippingRect, this.operationList,this);
             this[type].active = false;
         }
         this.bpm.target = this.operationList.chart.timeCalculator.bpmSequence; // 这个不会变
@@ -219,7 +221,7 @@ export class EventSequenceEditors extends EventTarget {
                 
             });
         }
-        /*
+        
         // 文本
         this.text.targetLine = targetLine;
         this.text.target = targetLine.extendedLayer.text;
@@ -354,7 +356,7 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
     nodeWidth = 30;
 
 
-    context: CanvasRenderingContext2D;
+    readonly context: CanvasRenderingContext2D;
     timeRatio: number;
 
     timeSpan: number;
@@ -394,12 +396,12 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
 
     
     constructor(
-        public type: EventType,
+        public readonly type: EventType,
         
-        public canvas: HTMLCanvasElement,
+        public readonly canvas: HTMLCanvasElement,
         public clippingRect: LTWH,
         public readonly operationList: O.OperationList,
-        public parentEditorSet: EventSequenceEditors
+        public readonly parentEditorSet: EventSequenceEditors
     ) {
         super();
         if (type === EventType.alpha) {
@@ -437,7 +439,6 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
         this.timeGridInterval = 1;
         this.initContext()
 
-        this.easing = easingMap.linear.in;
         
         // 下面有一堆监听器
         // #region
@@ -613,10 +614,10 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
             len = group.judgeLines.length;
             for (let i = 0; i < len; i++) {
                 const judgeLine = group.judgeLines[i];
-                if (judgeLine === line) {
+                if (judgeLine === line) { // 跳过本判定线，因为它在最后绘制
                     continue;
                 }
-                const sequence = judgeLine.extendedLayer[EventType[this.type]];
+                const sequence = this.type === EventType.speed ? judgeLine.speedSequence : judgeLine.eventLayers[parent.selectedLayer][EventType[this.type]];
                 if (!sequence) {
                     continue;
                 }
@@ -624,14 +625,14 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
                 context.globalAlpha = 1
                 context.fillText(`${judgeLine.id}`, i * 14, 60);
                 context.globalAlpha = 0.5;
-                this.drawSequence(sequence, beats, startBeats, endBeats, i);
+                this.drawSequence(sequence, beats, startBeats, endBeats, i, len);
             }
             context.restore();
         }
 
         // 抬高真正的目标序列之优先级
         selectionManager.setBasePriority(1);
-        this.drawSequence(this.target, beats, startBeats, endBeats, len ?? 0);
+        this.drawSequence(this.target, beats, startBeats, endBeats, len ?? 0, len ?? 1);
         selectionManager.setBasePriority(0);
 
 
@@ -649,7 +650,7 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
     drawSequence(
         sequence: EventNodeSequence<VT>, beats: number,
         startBeats: number, endBeats: number,
-        index: number,
+        index: number, total: number
     ): void
     {
         const {selectionManager, context} = this;
@@ -667,8 +668,8 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
             if (endNode.type === NodeType.TAIL) {
                 break;
             }
-            const startXY = this.calculatePos(beats, startNode, index);
-            const endXY = this.calculatePos(beats, endNode, index);
+            const startXY = this.calculatePos(beats, startNode, index, total);
+            const endXY = this.calculatePos(beats, endNode, index, total);
             const [startX, startY] = startXY;
             const [endX, endY] = endXY;
             const topY = startY - NODE_HEIGHT / 2;
@@ -699,7 +700,7 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
             }
 
 
-            this.strokeCurve(context, startNode, endNode, startXY, endXY, beats)
+            this.strokeCurve(context, startNode as NonLastStartNode<VT>, endNode, startXY, endXY, beats)
             if (selected) {
                 context.restore()
             }
@@ -718,7 +719,7 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
         } while (TC.toBeats((previousEndNode as EventEndNode<VT>).time) < endBeats)
         if (previousEndNode.next.next.type === NodeType.TAIL) {
             const lastStart = previousEndNode.next;
-            const startXY = this.calculatePos(beats, lastStart, index);
+            const startXY = this.calculatePos(beats, lastStart, index, total);
             const [startX, startY] = startXY;
             const topY = startY - NODE_HEIGHT / 2;
             const selected = this.nodesSelection.has(lastStart)
@@ -750,10 +751,10 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
      * @param seqIndex
      * @returns 节点参考点的虚拟坐标 
      */
-    abstract calculatePos(beats: number, node: EventStartNode<VT> | EventEndNode<VT>, seqIndex: number): [number, number];
+    abstract calculatePos(beats: number, node: EventStartNode<VT> | EventEndNode<VT>, seqIndex: number, total: number): [number, number];
     abstract strokeCurve(
         context: CanvasRenderingContext2D,
-        startNode: EventStartNode<VT>,
+        startNode: NonLastStartNode<VT>,
         endNode: EventEndNode<VT>, 
         startXY: [number, number],
         endXY: [number, number],
@@ -830,7 +831,7 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
             }
             const seq = this.operationList.chart.createEventNodeSequence(this.type, `#${line.id}.ex.${this.type}`);
             // @ts-expect-error
-            this.operationList.do(new O.JudgeLineExtendENSChangeOperation(line, this.type, seq as EventNodeSequence<string>))
+            this.operationList.do(new O.JudgeLineExtendENSChangeOperation(line, EventType[this.type], seq as EventNodeSequence<string>))
             // @ts-expect-error
             this.target = seq;
         }
@@ -902,6 +903,7 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
 
     override updateMatrix(): void {
         super.updateMatrix();
+        // 扩展：值维度
         this.valueRatio = this.innerWidth / lengthOf(this.valueRange);
         this.timeRatio = this.innerHeight / this.timeSpan;
         const {
@@ -914,6 +916,7 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
     }
     override drawCoordination(beats: number): void {
         super.drawCoordination(beats);
+        // 扩展：吸附线
         const { context, attachableValues } = this;
         context.save()
         context.fillStyle = "#EEE";
@@ -1029,9 +1032,13 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
         }
     }
     upHandler(event: MouseEvent | TouchEvent) {
-        const [offsetX, offsetY] = getOffsetCoordFromEvent(event, this.canvas);
-        const canvasCoord = new Coordinate(offsetX, offsetY).mul(this.canvasMatrixInverted);
-        const {x, y} = canvasCoord.mul(this.matrixInverted);
+        
+        const canvasCoord =
+        this.canvasPoint = getCanvasCoordFromEvent(
+            event, this.canvas,
+            this.elementMatrixInverted,
+            this.canvasMatrixInverted
+        );
         switch (this.state) {
             case EventCurveEditorState.selecting:
                 if (!this.wasEditing) {
@@ -1084,7 +1091,7 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
      * @param endXY Canvas坐标
      * @returns 
      */
-    strokeCurve(context: CanvasRenderingContext2D, startNode: EventStartNode<number>, endNode: EventEndNode<number>, startXY: [number, number], endXY: [number, number], beats: number): void {
+    strokeCurve(context: CanvasRenderingContext2D, startNode: NonLastStartNode<number>, endNode: EventEndNode<number>, startXY: [number, number], endXY: [number, number], beats: number): void {
         const evaluator = startNode.evaluator;
         if (evaluator instanceof EasedEvaluator) {
             const easing = evaluator.easing;
@@ -1237,6 +1244,152 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
 }
 
 class TextEventSequenceEditor extends EventSequenceEditor<string> {
+    constructor(type: EventType.color, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
+        super(type, canvas, clippingRect, operationList, parentEditorSet);
+    }
+    override moveHandler(event: MouseEvent | TouchEvent): void {
+        const coord =
+        this.canvasPoint = getCanvasCoordFromEvent(event, this.canvas,
+            this.elementMatrixInverted,
+            this.canvasMatrixInverted
+        );
+                
+        const timeDivisor = this.parentEditorSet.timeDivisor;
+        
+        const offsetBeats = coord.x / (this.timeGridInterval * this.timeRatio); // 颜色事件编辑器没有第三层矩阵，因为没有值维度
+
+        const accurateBeats = offsetBeats + this.lastBeats;
+        let pointedBeats = Math.floor(accurateBeats)
+        let beatFraction = Math.round((accurateBeats - pointedBeats) * timeDivisor)
+        if (beatFraction === timeDivisor) {
+            pointedBeats += 1
+            beatFraction = 0
+        }
+        this.pointedTime = [pointedBeats, beatFraction, this.parentEditorSet.timeDivisor];
+
+        switch (this.state) {
+            case EventCurveEditorState.selecting:
+                // console.log("det")
+                this.operationList.do(new O.EventNodeTimeChangeOperation(this.selectedNode, this.pointedTime))
+
+        }
+    }
+    
+    downHandler(event: MouseEvent | TouchEvent) {
+        if (!this.target) {
+            this.createTarget();
+            return;
+        }
+        const canvasCoord =
+        this.canvasPoint = getCanvasCoordFromEvent(
+            event, this.canvas,
+            this.elementMatrixInverted,
+            this.canvasMatrixInverted
+        );
+        // console.log("ECECoord:" , [x, y])
+        switch (this.state) {
+            case EventCurveEditorState.select:
+            case EventCurveEditorState.selecting:
+                const snode = this.selectionManager.click(canvasCoord)
+                this.state = !snode ? EventCurveEditorState.select : EventCurveEditorState.selecting;
+                if (snode) {
+                    this.selectedNode = snode.target
+                    this.dispatchEvent(new KPANodeSelectedEvent(this.selectedNode));
+                }
+                // console.log(EventCurveEditorState[this.state])
+                this.wasEditing = false;
+                break;
+            case EventCurveEditorState.edit:
+                const time: TimeT = this.pointedTime;
+                const prev = this.target.getNodeAt(TC.toBeats(time))
+                if (TC.eq(prev.time, time)) {
+                    break;
+                }
+                const endNode = new EventEndNode(time, prev.value)
+                const node = new EventStartNode(time, prev.value);
+                
+                
+                node.evaluator = EasedEvaluator.getEvaluatorFromEasing<string>(EventValueType.text, this.parentEditorSet.useEasing);
+                EventNode.connect(endNode, node)
+                // this.editor.chart.getComboInfoEntity(startTime).add(note)
+                this.operationList.do(new O.EventNodePairInsertOperation(node, prev));
+                this.selectedNode = node;
+                this.state = EventCurveEditorState.selecting;
+                this.wasEditing = true;
+                break;
+            case EventCurveEditorState.selectScope:
+                this.startingCanvasPoint = canvasCoord;
+                this.state = EventCurveEditorState.selectingScope;
+                break;
+        }
+    }
+
+    
+    
+    upHandler(event: MouseEvent | TouchEvent) {
+        // 这个方法和上面那个数值事件编辑器其实是一样的
+        const canvasCoord =
+        this.canvasPoint = getCanvasCoordFromEvent(
+            event, this.canvas,
+            this.elementMatrixInverted,
+            this.canvasMatrixInverted
+        );
+        switch (this.state) {
+            case EventCurveEditorState.selecting:
+                if (!this.wasEditing) {
+                    this.state = EventCurveEditorState.select;
+                } else {
+                    this.state = EventCurveEditorState.edit;
+                }
+                break;
+            case EventCurveEditorState.selectingScope:
+                const [sx, ex] = [this.startingCanvasPoint.x, canvasCoord.x].sort((a, b) => a - b);
+                const [sy, ey] = [this.startingCanvasPoint.y, canvasCoord.y].sort((a, b) => a - b);
+                const array = this.selectionManager.selectScope(sy, sx, ey, ex);
+                // console.log("Arr", array);
+                // console.log(sx, sy, ex, ey)
+                const nodes = array.map(x => x.target).filter(x => x instanceof EventStartNode);
+                // console.log(nodes);
+                switch (this.selectState) {
+                    case SelectState.extend:
+                        this.nodesSelection = this.nodesSelection.union(new Set(nodes));
+                        break;
+                    case SelectState.replace:
+                        this.nodesSelection = new Set(nodes);
+                        break;
+                    case SelectState.exclude:
+                        this.nodesSelection = this.nodesSelection.difference(new Set(nodes));
+                        break;
+                }
+                this.nodesSelection = new Set([...this.nodesSelection].filter((note: EventStartNode<any>) => !!note.parentSeq))
+                // console.log("bp")
+                if (this.nodesSelection.size !== 0) {
+                    this.dispatchEvent(new KPANodeScopeselectedEvent(this.nodesSelection));
+                }
+                this.state = EventCurveEditorState.selectScope;
+                break;
+            default:
+                this.state = EventCurveEditorState.select;
+        }
+    }
+
+    override calculatePos(beats: number, node: EventStartNode<string> | EventEndNode<string>, seqIndex: number, total: number): [number, number] {
+        const x = ((seqIndex + 0.5) / total - 0.5) * this.innerWidth;
+        return [x, (TC.toBeats(node.time) - beats) * this.timeRatio];
+    }
+
+    override strokeCurve(context: CanvasRenderingContext2D, startNode: NonLastStartNode<string>, endNode: EventEndNode<string>, startXY: [number, number], endXY: [number, number], beats: number): void {
+        drawLine(context, startXY[0], startXY[1], endXY[0], endXY[1]);
+        context.fillText(startNode.value, startXY[0], startXY[1]);
+    }
+
+    override strokeLastLineSegment(context: CanvasRenderingContext2D, startNode: EventStartNode<string>, startXY: [number, number]): void {
+        drawLine(context, startXY[0], startXY[1], startXY[0], -this.clippingRect[3] / 2);
+        context.fillText(startNode.value, startXY[0], startXY[1]);
+    }
+}
+
+class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
     constructor(type: EventType.text, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
     }
@@ -1279,7 +1432,6 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
             this.elementMatrixInverted,
             this.canvasMatrixInverted
         );
-        this.canvasPoint = canvasCoord;
         // console.log("ECECoord:" , [x, y])
         switch (this.state) {
             case EventCurveEditorState.select:
@@ -1302,13 +1454,13 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
                 const endNode = new EventEndNode(time, prev.value)
                 const node = new EventStartNode(time, prev.value);
                 
-                node.easing = this.parentEditorSet.easing.targetEasing ?? this.easing;
+                
+                node.evaluator = EasedEvaluator.getEvaluatorFromEasing<RGB>(EventValueType.color, this.parentEditorSet.useEasing);
                 EventNode.connect(endNode, node)
                 // this.editor.chart.getComboInfoEntity(startTime).add(note)
-                editor.operationList.do(new EventNodePairInsertOperation(node, prev));
+                this.operationList.do(new O.EventNodePairInsertOperation(node, prev));
                 this.selectedNode = node;
                 this.state = EventCurveEditorState.selecting;
-                this.parentEditorSet.$editSwitch.checked = false;
                 this.wasEditing = true;
                 break;
             case EventCurveEditorState.selectScope:
@@ -1317,5 +1469,95 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
                 break;
         }
     }
-}
 
+    
+    
+    upHandler(event: MouseEvent | TouchEvent) {
+        // 这个方法和上面那个数值事件编辑器其实是一样的
+        const canvasCoord =
+        this.canvasPoint = getCanvasCoordFromEvent(
+            event, this.canvas,
+            this.elementMatrixInverted,
+            this.canvasMatrixInverted
+        );
+        switch (this.state) {
+            case EventCurveEditorState.selecting:
+                if (!this.wasEditing) {
+                    this.state = EventCurveEditorState.select;
+                } else {
+                    this.state = EventCurveEditorState.edit;
+                }
+                break;
+            case EventCurveEditorState.selectingScope:
+                const [sx, ex] = [this.startingCanvasPoint.x, canvasCoord.x].sort((a, b) => a - b);
+                const [sy, ey] = [this.startingCanvasPoint.y, canvasCoord.y].sort((a, b) => a - b);
+                const array = this.selectionManager.selectScope(sy, sx, ey, ex);
+                // console.log("Arr", array);
+                // console.log(sx, sy, ex, ey)
+                const nodes = array.map(x => x.target).filter(x => x instanceof EventStartNode);
+                // console.log(nodes);
+                switch (this.selectState) {
+                    case SelectState.extend:
+                        this.nodesSelection = this.nodesSelection.union(new Set(nodes));
+                        break;
+                    case SelectState.replace:
+                        this.nodesSelection = new Set(nodes);
+                        break;
+                    case SelectState.exclude:
+                        this.nodesSelection = this.nodesSelection.difference(new Set(nodes));
+                        break;
+                }
+                this.nodesSelection = new Set([...this.nodesSelection].filter((note: EventStartNode<any>) => !!note.parentSeq))
+                // console.log("bp")
+                if (this.nodesSelection.size !== 0) {
+                    this.dispatchEvent(new KPANodeScopeselectedEvent(this.nodesSelection));
+                }
+                this.state = EventCurveEditorState.selectScope;
+                break;
+            default:
+                this.state = EventCurveEditorState.select;
+        }
+    }
+
+    override calculatePos(beats: number, node: EventStartNode<RGB> | EventEndNode<RGB>, seqIndex: number, total: number): [number, number] {
+        const x = ((seqIndex + 0.5) / total - 0.5) * this.innerWidth;
+        return [x, (TC.toBeats(node.time) - beats) * this.timeRatio];
+    }
+
+    override strokeCurve(context: CanvasRenderingContext2D, startNode: NonLastStartNode<RGB>, endNode: EventEndNode<RGB>, startXY: [number, number], endXY: [number, number], beats: number): void {
+        if (this.nodesSelection.has(startNode)) {
+            // 在外面已经设定了strokeStyle，因此这里不需要
+            drawLine(context, startXY[0], startXY[1], endXY[0], endXY[1]);
+            return;
+        }
+        const gradient = context.createLinearGradient(startXY[0], startXY[1], endXY[0], endXY[1]);
+        const startValue = startNode.value;
+        const endValue = endNode.value;
+        
+        gradient.addColorStop(0, rgb(...startValue));
+        gradient.addColorStop(1, rgb(...endValue));
+        const evaluator = startNode.evaluator
+        if (!(evaluator instanceof EasedEvaluator) || evaluator.easing !== linearEasing) {
+            for (let i = 1; i < COLOR_INTERPOLATION_MAX_STOPS; i++) {
+                const pos = COLOR_INTERPOLATION_STEP * i;
+                const val: RGB = 
+                    evaluator instanceof ColorEasedEvaluator
+                        ? evaluator.convert(startValue, endValue, pos)
+                    : evaluator instanceof ExpressionEvaluator
+                        ? evaluator.func(pos)
+                    : evaluator instanceof MacroEvaluator
+                        ? evaluator.consumers.get(startNode)?.func(pos)
+                    : evaluator.eval(startNode, TC.toBeats(startNode.time) + pos * (TC.toBeats(endNode.time) - TC.toBeats(startNode.time)));
+                    // UNREACHABLE, theoretically
+                gradient.addColorStop(pos, rgb(...val));
+            }
+        }
+        context.strokeStyle = gradient;
+        drawLine(context, startXY[0], startXY[1], endXY[0], endXY[1]);
+    }
+
+    override strokeLastLineSegment(context: CanvasRenderingContext2D, startNode: EventStartNode<RGB>, startXY: [number, number]): void {
+        context.strokeStyle = rgb(...startNode.value);
+        drawLine(context, startXY[0], startXY[1], startXY[0], -this.clippingRect[3] / 2);
+    }
+}
