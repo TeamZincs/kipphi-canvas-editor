@@ -1375,7 +1375,7 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
 
     override calculatePos(beats: number, node: EventStartNode<string> | EventEndNode<string>, seqIndex: number, total: number): [number, number] {
         const x = ((seqIndex + 0.5) / total - 0.5) * this.innerWidth;
-        return [x, (TC.toBeats(node.time) - beats) * this.timeRatio];
+        return [x, -(TC.toBeats(node.time) - beats) * this.timeRatio];
     }
 
     override strokeCurve(context: CanvasRenderingContext2D, startNode: NonLastStartNode<string>, endNode: EventEndNode<string>, startXY: [number, number], endXY: [number, number], beats: number): void {
@@ -1521,7 +1521,7 @@ class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
 
     override calculatePos(beats: number, node: EventStartNode<RGB> | EventEndNode<RGB>, seqIndex: number, total: number): [number, number] {
         const x = ((seqIndex + 0.5) / total - 0.5) * this.innerWidth;
-        return [x, (TC.toBeats(node.time) - beats) * this.timeRatio];
+        return [x, -(TC.toBeats(node.time) - beats) * this.timeRatio];
     }
 
     override strokeCurve(context: CanvasRenderingContext2D, startNode: NonLastStartNode<RGB>, endNode: EventEndNode<RGB>, startXY: [number, number], endXY: [number, number], beats: number): void {
