@@ -1263,7 +1263,7 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
                 
         const timeDivisor = this.parentEditorSet.timeDivisor;
         
-        const offsetBeats = coord.x / (this.timeGridInterval * this.timeRatio); // 颜色事件编辑器没有第三层矩阵，因为没有值维度
+        const offsetBeats = -coord.y / (this.timeGridInterval * this.timeRatio); // 颜色事件编辑器没有第三层矩阵，因为没有值维度
 
         const accurateBeats = offsetBeats + this.lastBeats;
         let pointedBeats = Math.floor(accurateBeats)
@@ -1409,7 +1409,7 @@ class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
                 
         const timeDivisor = this.parentEditorSet.timeDivisor;
         
-        const offsetBeats = coord.x / (this.timeGridInterval * this.timeRatio); // 文本事件编辑器没有第三层矩阵，因为没有值维度
+        const offsetBeats = -coord.y / (this.timeGridInterval * this.timeRatio); // 文本事件编辑器没有第三层矩阵，因为没有值维度
 
         const accurateBeats = offsetBeats + this.lastBeats;
         let pointedBeats = Math.floor(accurateBeats)
