@@ -1,6 +1,6 @@
 import { Coordinate, drawLine, identity, Images, Matrix33, rgb } from "kipphi-player";
 import { KPAEvent, SelectState, type LTWH } from "./notesEditor";
-import { BezierEasing, BPMEndNode, BPMStartNode, ColorEasedEvaluator, EasedEvaluator, Easing, easingArray, easingMap, EventEndNode, EventNode, EventNodeLike, EventNodeSequence, EventStartNode, EventType, EventValueType, ExpressionEvaluator, fixedEasing, JudgeLine, linearEasing, MacroEvaluator, NodeType, NormalEasing, Note, Op as O, TC, TemplateEasing, type EventValueESType, type NonLastStartNode, type RGB, type SpeedENS, type TimeT } from "kipphi";
+import { BezierEasing, BPMEndNode, BPMStartNode, ColorEasedEvaluator, EasedEvaluator, Easing, easingArray, easingMap, Evaluator, EventEndNode, EventNode, EventNodeLike, EventNodeSequence, EventStartNode, EventType, EventValueType, ExpressionEvaluator, fixedEasing, JudgeLine, linearEasing, MacroEvaluator, NodeType, NormalEasing, Note, Op as O, TC, TemplateEasing, type EventValueESType, type EventValueTypeOfType, type NonLastStartNode, type RGB, type SpeedENS, type TimeT } from "kipphi";
 import { SelectionManager } from "./selectionManager";
 import { drawBezierCurve, getCanvasCoordFromEvent, getOffsetCoordFromEvent, getPercentile, on, type StripReadonly } from "./util";
 import { messages } from "./messages";
@@ -347,6 +347,8 @@ function divideOrMul(gridSpan: number, maximum: number)  {
  * 
  */
 export abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTarget {
+    readonly valueType: EventValueTypeOfType<VT>;
+
     targetLine: JudgeLine;
     target: EventNodeSequence<VT>;
     targetEasing?: TemplateEasing;
@@ -479,6 +481,12 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
                 case "c":
                     this.copy();
                     break;
+                case "r":
+                    this.placeNode(
+                        this instanceof NumericEventCurveEditor
+                            ? this.pointedValue as VT
+                        : null
+                    )
             }
         })
         window.addEventListener("keyup", (e: KeyboardEvent) => {
@@ -513,6 +521,31 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
     abstract moveHandler(event: MouseEvent | TouchEvent): void;
     abstract downHandler(event: MouseEvent | TouchEvent): void;
     abstract upHandler(event: MouseEvent | TouchEvent): void;
+
+    placeNode(value: VT) {
+        const time: TimeT = this.pointedTime;
+        const prev = this.target.getNodeAt(TC.toBeats(time))
+        if (TC.eq(prev.time, time)) {
+            return;
+        }
+        value = value ?? prev.value;
+        let node: EventStartNode<VT>, endNode: EventEndNode<VT>;
+        if (this.type === EventType.bpm) {
+            (node as any as BPMStartNode) = new BPMStartNode(time, value as number);
+            (endNode as any as BPMEndNode) = new BPMEndNode(time);
+        } else {
+            endNode = new EventEndNode(time, this.newNodeState === NewNodeState.controlsStart ? prev.value : value)
+            node = new EventStartNode(time, this.newNodeState === NewNodeState.controlsEnd ? prev.value : value);
+        }
+        node.evaluator = EasedEvaluator.getEvaluatorFromEasing<VT>(this.valueType, this.parentEditorSet.useEasing) as unknown as EasedEvaluator<VT>;
+        EventNode.connect(endNode, node)
+        // this.editor.chart.getComboInfoEntity(startTime).add(note)
+        this.operationList.do(new O.EventNodePairInsertOperation(node, prev));
+        if (this.type === EventType.bpm) {
+            this.dispatchEvent(new KPABPMAffectedEvent());
+        }
+        this.selectedNode = node;
+    }
 
     
 
@@ -885,6 +918,7 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
 }
 
 class NumericEventCurveEditor extends EventSequenceEditor<number> {
+    override readonly valueType = EventValueType.numeric;
 
     public pointedValue: number;
     
@@ -1010,27 +1044,7 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
                 this.wasEditing = false;
                 break;
             case EventCurveEditorState.edit:
-                const time: TimeT = this.pointedTime;
-                const prev = this.target.getNodeAt(TC.toBeats(time))
-                if (TC.eq(prev.time, time)) {
-                    break;
-                }
-                let node: EventStartNode, endNode: EventEndNode;
-                if (this.type === EventType.bpm) {
-                    node = new BPMStartNode(time, this.pointedValue);
-                    endNode = new BPMEndNode(time);
-                } else {
-                    endNode = new EventEndNode(time, this.newNodeState === NewNodeState.controlsStart ? prev.value : this.pointedValue)
-                    node = new EventStartNode(time, this.newNodeState === NewNodeState.controlsEnd ? prev.value : this.pointedValue);
-                }
-                node.evaluator = EasedEvaluator.getEvaluatorFromEasing<number>(EventValueType.numeric, this.parentEditorSet.useEasing);
-                EventNode.connect(endNode, node)
-                // this.editor.chart.getComboInfoEntity(startTime).add(note)
-                this.operationList.do(new O.EventNodePairInsertOperation(node, prev));
-                if (this.type === EventType.bpm) {
-                    this.dispatchEvent(new KPABPMAffectedEvent());
-                }
-                this.selectedNode = node;
+                this.placeNode(this.pointedValue);
                 this.state = EventCurveEditorState.selecting;
                 this.wasEditing = true;
                 break;
@@ -1254,6 +1268,7 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
 }
 
 class TextEventSequenceEditor extends EventSequenceEditor<string> {
+    override readonly valueType = EventValueType.text;
     constructor(type: EventType.text, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
     }
@@ -1310,20 +1325,7 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
                 this.wasEditing = false;
                 break;
             case EventCurveEditorState.edit:
-                const time: TimeT = this.pointedTime;
-                const prev = this.target.getNodeAt(TC.toBeats(time))
-                if (TC.eq(prev.time, time)) {
-                    break;
-                }
-                const endNode = new EventEndNode(time, prev.value)
-                const node = new EventStartNode(time, prev.value);
-                
-                
-                node.evaluator = EasedEvaluator.getEvaluatorFromEasing<string>(EventValueType.text, this.parentEditorSet.useEasing);
-                EventNode.connect(endNode, node)
-                // this.editor.chart.getComboInfoEntity(startTime).add(note)
-                this.operationList.do(new O.EventNodePairInsertOperation(node, prev));
-                this.selectedNode = node;
+                this.placeNode(null);
                 this.state = EventCurveEditorState.selecting;
                 this.wasEditing = true;
                 break;
@@ -1400,6 +1402,7 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
 }
 
 class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
+    override readonly valueType = EventValueType.color;
     constructor(type: EventType.color, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
     }
@@ -1456,20 +1459,7 @@ class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
                 this.wasEditing = false;
                 break;
             case EventCurveEditorState.edit:
-                const time: TimeT = this.pointedTime;
-                const prev = this.target.getNodeAt(TC.toBeats(time))
-                if (TC.eq(prev.time, time)) {
-                    break;
-                }
-                const endNode = new EventEndNode(time, prev.value)
-                const node = new EventStartNode(time, prev.value);
-                
-                
-                node.evaluator = EasedEvaluator.getEvaluatorFromEasing<RGB>(EventValueType.color, this.parentEditorSet.useEasing);
-                EventNode.connect(endNode, node)
-                // this.editor.chart.getComboInfoEntity(startTime).add(note)
-                this.operationList.do(new O.EventNodePairInsertOperation(node, prev));
-                this.selectedNode = node;
+                this.placeNode(null);
                 this.state = EventCurveEditorState.selecting;
                 this.wasEditing = true;
                 break;
