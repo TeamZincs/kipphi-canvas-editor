@@ -252,7 +252,7 @@ export class EventSequenceEditors extends EventTarget {
 
 
 
-enum EventCurveEditorState {
+export enum EventCurveEditorState {
     select,
     selecting,
     edit,
@@ -346,7 +346,7 @@ function divideOrMul(gridSpan: number, maximum: number)  {
  * 
  * 
  */
-abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTarget {
+export abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTarget {
     targetLine: JudgeLine;
     target: EventNodeSequence<VT>;
     targetEasing?: TemplateEasing;
@@ -456,7 +456,7 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
         });
         
         window.addEventListener("keydown", (e: KeyboardEvent) => { // 踩坑：Canvas不能获得焦点
-            if (!this.mouseIn) {
+            if (!this.mouseIn || !this.active) {
                 return;
             }
             if (document.activeElement !== document.body) {
@@ -482,6 +482,9 @@ abstract class EventSequenceEditor<VT extends EventValueESType> extends EventTar
             }
         })
         window.addEventListener("keyup", (e: KeyboardEvent) => {
+            if (!this.active) {
+                return;
+            }
             if (e.key === "Shift") {
                 if (this.state === EventCurveEditorState.selectScope || this.state === EventCurveEditorState.selectingScope) {
                     this.state = EventCurveEditorState.select;
