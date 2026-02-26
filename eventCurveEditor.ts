@@ -625,7 +625,13 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             context.clearRect(-clippingRect[2] / 2, -clippingRect[3] / 2, clippingRect[2], clippingRect[3]);
             context.fillStyle = "#EEE";
             context.textAlign = "center"
-            context.fillText(messages.NO_TARGET(this.parentEditorSet.selectedLayer, EventType[this.type]), 0, 0)
+            context.fillText(
+                this.type !== EventType.easing
+                ? messages.NO_TARGET(
+                    this.parentEditorSet.selectedLayer,
+                    EventType[this.type]
+                )
+                : messages.NO_TARGET_EASING(), 0, 0)
             context.restore();
             return;
         }
