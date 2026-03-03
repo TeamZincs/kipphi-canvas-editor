@@ -131,21 +131,19 @@ export function getPercentile(sorted: number[], percentile: number): number {
 /**
  * 
  * @param context 
- * @param startX 
- * @param startY 
- * @param endX 
- * @param endY 
- * @param cp1x
- * @param cp1y 
- * @param cp2x 
- * @param cp2y 
+ * @param startXY 
+ * @param endXY 
+ * @param cp1xy 控制点1（相对坐标）
+ * @param cp2xy 控制点2（相对坐标）
  */
 export function drawBezierCurve(
     context: CanvasRenderingContext2D,
     startXY: [number, number], endXY: [number, number], cp1xy: [number, number], cp2xy: [number, number]) {
     context.beginPath();
     context.moveTo(startXY[0], startXY[1]);
-    context.bezierCurveTo(cp1xy[0], cp1xy[1], cp2xy[0], cp2xy[1], endXY[0], endXY[1]);
+    const deltaX = endXY[0] - startXY[0];
+    const deltaY = endXY[1] - startXY[1];
+    context.bezierCurveTo(startXY[0] + deltaX * cp1xy[0], startXY[1] + deltaY * cp1xy[1], startXY[0] + deltaX * cp2xy[0], startXY[1] + deltaY * cp2xy[1], endXY[0], endXY[1]);
     context.stroke();
 }
 
