@@ -8,13 +8,13 @@ import { messages } from "./messages";
 
 
 class KPANodeSelectedEvent extends KPAEvent {
-    constructor(public note: EventStartNode<EventValueESType> | EventEndNode<EventValueESType>) {
-        super("noteselected");
+    constructor(public node: EventStartNode<EventValueESType> | EventEndNode<EventValueESType>) {
+        super("nodeselected");
     }
 }
 class KPANodeScopeselectedEvent extends KPAEvent {
-    constructor(public notes: Set<EventStartNode<EventValueESType>>) {
-        super("notescopeselected");
+    constructor(public nodes: Set<EventStartNode<EventValueESType>>) {
+        super("nodescopeselected");
     }
 }
 
@@ -25,8 +25,8 @@ class KPABPMAffectedEvent extends KPAEvent {
 }
 
 interface KPANodeEventMap {
-    "noteselected": KPANodeSelectedEvent;
-    "notescopeselected": KPANodeScopeselectedEvent;
+    "nodeselected": KPANodeSelectedEvent;
+    "nodescopeselected": KPANodeScopeselectedEvent;
 }
 
 
@@ -104,7 +104,7 @@ type ChangeTargetOptions = { judgeLine?: JudgeLine, layerID?: LayerID };
     eventSequenceEditors.changeTarget({ judgeLine: chart.judgeLines[0] });
     // 注意这句，不然容易出错
  */
-export class EventSequenceEditors extends EventTarget {
+export class EventSequenceEditors {
     selectState: SelectState;
     timeDivisor: number = 4;
 
@@ -134,7 +134,6 @@ export class EventSequenceEditors extends EventTarget {
         public clippingRect: LTWH,
         public readonly operationList: O.OperationList
     ) {
-        super()
         this.init();
     }
     init() {
@@ -248,6 +247,27 @@ export class EventSequenceEditors extends EventTarget {
         this.buffer.push(str);
     }
 
+    addEventListenerForAll<T extends keyof KPANodeEventMap>(
+        type: T,
+        listener: (event: KPANodeEventMap[T]) => void, options?: EventListenerOptions): void
+    {
+        for (const editor of [
+            this.moveX,
+            this.moveY,
+            this.alpha,
+            this.rotate,
+            this.speed,
+            this.easing,
+            this.bpm,
+            this.text,
+            this.color,
+            this.scaleX,
+            this.scaleY
+        ])
+        {
+            editor.addEventListener(type, listener, options)
+        }
+    }
 }
 
 
@@ -1140,8 +1160,8 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
                     context,
                     startXY,
                     endXY,
-                    easing.cp1,
-                    easing.cp2
+                    [easing.cp1[1], easing.cp1[0]],
+                    [easing.cp2[1], easing.cp2[0]]
                 );
                 return;
             }
