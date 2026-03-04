@@ -233,7 +233,7 @@ export class NotesEditor extends EventTarget {
                 const noteType = key2NoteMap[e.key.toLowerCase()];
                 
                 const startTime: TimeT = this.pointedTime;
-                const endTime: TimeT = this.noteType === NoteType.hold ? [startTime[0] + 1, 0, 1] : [...startTime]
+                const endTime: TimeT = noteType === NoteType.hold ? [startTime[0] + 1, 0, 1] : [...startTime]
                 
                 const createOptions: NoteDataKPA = {
                     ...this.defaultNoteConfig,
