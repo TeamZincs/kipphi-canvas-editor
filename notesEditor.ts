@@ -227,6 +227,9 @@ export class NotesEditor extends EventTarget {
             case "w":
             case "e":
             case "r":
+                if (e.ctrlKey) {
+                    return;
+                }
                 const noteType = key2NoteMap[e.key.toLowerCase()];
                 
                 const startTime: TimeT = this.pointedTime;

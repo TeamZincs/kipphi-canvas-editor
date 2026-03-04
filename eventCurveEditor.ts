@@ -502,6 +502,9 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
                     this.copy();
                     break;
                 case "r":
+                    if (e.ctrlKey) {
+                        return;
+                    }
                     this.placeNode(
                         this instanceof NumericEventCurveEditor
                             ? this.pointedValue as VT
