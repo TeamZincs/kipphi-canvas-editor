@@ -164,6 +164,7 @@ export class EventSequenceEditors {
         */
         this.activatedEditor = this.moveX;
         this.moveX.active = true;
+
     }
     _selectedEditor: EventSequenceEditor<EventValueESType>;
     get activatedEditor() {
@@ -525,6 +526,7 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             }
         })
         // #endregion
+        
     }
     override addEventListener<T extends keyof KPANodeEventMap>(
         type: T,
@@ -972,6 +974,8 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
         this.valueRatio = this.innerWidth / lengthOf(this.valueRange);
         this.attachableValues = generateAttachable([config.valueGridSpan, 0], this.valueRange);
 
+        this.updateMatrix();
+
     }
 
     override updateMatrix(): void {
@@ -1300,6 +1304,7 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
     override readonly valueType = EventValueType.text;
     constructor(type: EventType.text, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
+        this.updateMatrix();
     }
     override moveHandler(event: MouseEvent | TouchEvent): void {
         const coord =
@@ -1434,6 +1439,7 @@ class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
     override readonly valueType = EventValueType.color;
     constructor(type: EventType.color, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
+        this.updateMatrix();
     }
     override moveHandler(event: MouseEvent | TouchEvent): void {
         const coord =

@@ -186,7 +186,9 @@ export class NotesEditor extends EventTarget {
                     this.draw();
                 }
             }
-        })
+        });
+
+        this.updateMatrix();
         
     }
     override addEventListener<T extends keyof KPANoteEventMap>(
