@@ -1,5 +1,5 @@
 import { HNList, JudgeLine, NNList, NNNList, NodeType, Note, NoteType, TC, TimeCalculator, type NNNOrTail, type NNOrTail, type NoteDataKPA, Op as O, type RGB, type TimeT, VERSION, NNNode, NoteNode } from "kipphi";
-import { Coordinate, drawLine, identity, Images, Matrix33, rgb } from "kipphi-player";
+import { Coordinate, drawLine, identity, Images, Matrix33, Respack, rgb } from "kipphi-player";
 import { SelectionManager } from "./selectionManager";
 import { computeAttach, getOffsetCoordFromEvent, on } from "./util";
 
@@ -136,7 +136,8 @@ export class NotesEditor extends EventTarget {
     constructor(
         public canvas: HTMLCanvasElement,
         public clippingRect: LTWH,
-        public operationList: O.OperationList
+        public operationList: O.OperationList,
+        public respack: Respack
     ) {
         super();
         this.selectionManager = new SelectionManager()
@@ -736,7 +737,9 @@ export class NotesEditor extends EventTarget {
             timeRatio,
             
             padding,
-            matrix
+            matrix,
+
+            respack
         } = this;
         const start = TC.toBeats(note.startTime) - beats
         const end = TC.toBeats(note.endTime) - beats
@@ -752,7 +755,7 @@ export class NotesEditor extends EventTarget {
             context.save();
             context.translate(posX, posY);
             context.rotate(rad);
-            context.drawImage(Images.getImageFromType(note.type), -NOTE_WIDTH / 2, -NOTE_HEIGHT / 2, NOTE_WIDTH, NOTE_HEIGHT)
+            context.drawImage(respack.getNoteFromType(note.tint), -NOTE_WIDTH / 2, -NOTE_HEIGHT / 2, NOTE_WIDTH, NOTE_HEIGHT)
             if (this.notesSelection.has(note)) {
                 context.save()
                 context.fillStyle = "#ADA9";
@@ -774,7 +777,7 @@ export class NotesEditor extends EventTarget {
             })
         } else {
             const posTop = posY - NOTE_HEIGHT / 2
-            context.drawImage(Images.getImageFromType(note.type), posLeft, posTop, NOTE_WIDTH, NOTE_HEIGHT)
+            context.drawImage(respack.getNoteFromType(note.type), posLeft, posTop, NOTE_WIDTH, NOTE_HEIGHT)
             context.fillText(note.parentNode.parentSeq.parentLine.id + "", posLeft + NOTE_WIDTH / 2, posTop + NOTE_HEIGHT + 20)
             if (this.notesSelection.has(note)) {
                 context.save();
@@ -795,7 +798,7 @@ export class NotesEditor extends EventTarget {
             })
         }
         if (isHold) {
-            context.drawImage(Images.HOLD_BODY, posLeft, -end * timeRatio, NOTE_WIDTH, (end - start) * timeRatio);
+            context.drawImage(respack.HOLD_BODY, posLeft, -end * timeRatio, NOTE_WIDTH, (end - start) * timeRatio);
             this.selectionManager.add({
                 target: new HoldTail(note),
                 left: posLeft,
