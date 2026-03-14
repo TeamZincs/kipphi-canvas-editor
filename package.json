@@ -1,5 +1,6 @@
 {
   "name": "kipphi-canvas-editor",
+  "version": "2.1.0",
   "module": "index.ts",
   "main": "index.js",
   "type": "module",
@@ -8,5 +9,12 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "kipphi": "^2.1.0",
+    "kipphi-player": "^2.1.0"
+  },
+  "repository": {
+    "url": "https://github.com/TeamZincs/kipphi-canvas-editor.git"
   }
 }
