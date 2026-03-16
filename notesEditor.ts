@@ -755,7 +755,7 @@ export class NotesEditor extends EventTarget {
             context.save();
             context.translate(posX, posY);
             context.rotate(rad);
-            context.drawImage(respack.getNoteFromType(note.tint), -NOTE_WIDTH / 2, -NOTE_HEIGHT / 2, NOTE_WIDTH, NOTE_HEIGHT)
+            context.drawImage(respack.getNoteFromType(note.type), -NOTE_WIDTH / 2, -NOTE_HEIGHT / 2, NOTE_WIDTH, NOTE_HEIGHT)
             if (this.notesSelection.has(note)) {
                 context.save()
                 context.fillStyle = "#ADA9";
