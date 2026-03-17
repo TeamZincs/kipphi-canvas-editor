@@ -79,6 +79,7 @@ export class NotesEditor extends EventTarget {
     targetNNList?: NNList;
 
     // begin 网格参数，可配置
+    /** PosX=0的实际横坐标 */
     positionBasis: number
     positionRatio: number;
     positionGridSpan: number;
@@ -818,8 +819,13 @@ export class NotesEditor extends EventTarget {
         }
     }
 
-
-
+    /**
+     * 如果你觉得positionBasis难用，就用这个
+     * @param positionX 
+     */
+    setValueAsCenter(positionX: number) {
+        this.positionBasis = -(positionX * this.positionRatio)
+    }
 
 
     paste() {
