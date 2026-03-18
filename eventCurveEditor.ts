@@ -948,7 +948,7 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
     // end
 }
 
-class NumericEventCurveEditor extends EventSequenceEditor<number> {
+export class NumericEventCurveEditor extends EventSequenceEditor<number> {
     override readonly valueType = EventValueType.numeric;
 
     public pointedValue: number;
@@ -1300,7 +1300,7 @@ class NumericEventCurveEditor extends EventSequenceEditor<number> {
     protected matrixInverted: Matrix33;
 }
 
-class TextEventSequenceEditor extends EventSequenceEditor<string> {
+export class TextEventSequenceEditor extends EventSequenceEditor<string> {
     override readonly valueType = EventValueType.text;
     constructor(type: EventType.text, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
@@ -1435,7 +1435,7 @@ class TextEventSequenceEditor extends EventSequenceEditor<string> {
     }
 }
 
-class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
+export class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
     override readonly valueType = EventValueType.color;
     constructor(type: EventType.color, canvas: HTMLCanvasElement, clippingRect: LTWH, operationList: O.OperationList, parentEditorSet: EventSequenceEditors) {
         super(type, canvas, clippingRect, operationList, parentEditorSet);
