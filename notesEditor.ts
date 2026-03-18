@@ -8,7 +8,8 @@ import { computeAttach, getOffsetCoordFromEvent, on } from "./util";
 
 const DRAWS_NN = true;
 const COLOR_1 = "#66ccff"
-const COLOR_2 ="#ffcc66"
+const COLOR_2 ="#ffcc66";
+const OFFSCREEN_HINT_OFFSET = 50;
 
 export class KPAEvent extends Event {
     constructor(type: string) {
@@ -398,7 +399,7 @@ export class NotesEditor extends EventTarget {
         this.timeRatio = height / this.timeSpan;
         this.context.resetTransform();
         this.context.translate(left + width / 2, top + height - this.padding);
-        this.matrix = identity.scale(positionRatio, -timeRatio);
+        this.matrix = identity.translate(this.positionBasis, 0).scale(positionRatio, -timeRatio);
         this.matrixInverted = this.matrix.invert();
         this.canvasMatrix = Matrix33.fromDOMMatrix(this.context.getTransform());
         this.canvasMatrixInverted = this.canvasMatrix.invert();
@@ -739,6 +740,7 @@ export class NotesEditor extends EventTarget {
             
             padding,
             matrix,
+            clippingRect,
 
             respack
         } = this;
@@ -748,6 +750,22 @@ export class NotesEditor extends EventTarget {
         const NOTE_WIDTH = this.noteWidth;
         const NOTE_HEIGHT = this.noteHeight;
         const posLeft = posX - NOTE_WIDTH / 2;
+        const posRight = posX + NOTE_WIDTH / 2;
+        const tooLeft = posRight < -clippingRect[2] / 2;
+        const tooRight = posLeft > clippingRect[2] / 2;
+        if (tooLeft || tooRight) {
+            // 超出画布范围，写点字作为提醒
+            context.save()
+            context.fillStyle = "#ddd";
+            context.font = "50px phigros";
+            if (tooLeft) {
+                context.fillText("←!!",  -OFFSCREEN_HINT_OFFSET, posY);
+            } else {
+                context.fillText("!!→", +OFFSCREEN_HINT_OFFSET, posY);
+            }
+            context.restore()
+            return;
+        }
         const isHold = note.type === NoteType.hold;
         let rad: number;
         if (nth !== 0){
