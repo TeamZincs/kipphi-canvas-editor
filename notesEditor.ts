@@ -160,6 +160,15 @@ export class NotesEditor extends EventTarget {
             .scale(this.canvas.clientWidth / this.canvas.width, this.canvas.clientHeight / this.canvas.height);
         this.elementMatrixInverted = this.elementMatrix.invert();
 
+        
+        const resizeObserver = new ResizeObserver(() => {
+            this.elementMatrix = identity
+                .scale(this.canvas.clientWidth / this.canvas.width, this.canvas.clientHeight / this.canvas.height);
+            this.elementMatrixInverted = this.elementMatrix.invert();
+        });
+        resizeObserver.observe(this.canvas);
+
+
         this.context = this.canvas.getContext("2d");
         on(["mousedown", "touchstart"], this.canvas, (event) => {this.downHandler(event)})
         on(["mouseup", "touchend"], this.canvas, (event) => this.upHandler(event))
