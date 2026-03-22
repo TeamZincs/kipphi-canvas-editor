@@ -132,17 +132,21 @@ export class EventSequenceEditors {
     constructor(
         public canvas: HTMLCanvasElement,
         public clippingRect: LTWH,
-        public readonly operationList: O.OperationList
+        public readonly operationList: O.OperationList,
+        timeBasis: number
     ) {
-        this.init();
+        this.init(timeBasis || 0);
     }
-    init() {
+    init(timeBasis = 0) {
         for (const type of numericEventTypeKeys) {
             (this as StripReadonly<this>)[type] = new NumericEventCurveEditor(EventType[type], this.canvas, this.clippingRect, this.operationList,this);
             this[type].active = false;
+            this[type].timeBasis = timeBasis;
         }
         (this as StripReadonly<this>).text = new TextEventSequenceEditor(EventType.text, this.canvas, this.clippingRect, this.operationList, this);
+        this.text.timeBasis = timeBasis;
         (this as StripReadonly<this>).color = new ColorEventSequenceEditor(EventType.color, this.canvas, this.clippingRect, this.operationList, this);
+        this.color.timeBasis = timeBasis;
         this.bpm.target = this.operationList.chart.timeCalculator.bpmSequence; // 这个不会变
         on(["mousemove", "touchmove"], this.canvas, (event) => {
             this.activatedEditor.moveHandler(event);
@@ -386,6 +390,8 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
 
     timeSpan: number;
     timeGridInterval: number;
+    /** [-0.5, 0.5] */
+    timeBasis: number = 0;
 
 
 
@@ -589,7 +595,7 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
         const {innerHeight, innerWidth} = this;
         const {
             timeGridInterval: timeGridSpan,
-            timeRatio, context} = this;
+            timeRatio, context, timeBasis} = this;
         
         const timeDivisor = this.parentEditorSet.timeDivisor
         context.clearRect(-boundWidth / 2, -boundHeight / 2, boundWidth, boundHeight)
@@ -621,10 +627,11 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
 
         context.lineWidth = 3;
         
-        const stopBeats = Math.ceil((beats + this.timeSpan / 2) / timeGridSpan) * timeGridSpan;
-        const startBeats = Math.ceil((beats - this.timeSpan / 2) / timeGridSpan - 1) * timeGridSpan;
+        const yZero = innerHeight * timeBasis;
+        const stopBeats = Math.ceil((beats + this.timeSpan * (0.5 + timeBasis)) / timeGridSpan) * timeGridSpan;
+        const startBeats = Math.ceil((beats + this.timeSpan * (-0.5 + timeBasis)) / timeGridSpan - 1) * timeGridSpan;
         for (let time = startBeats; time < stopBeats; time += timeGridSpan) {
-            const positionY = (time - beats)  * timeRatio
+            const positionY = (time - beats)  * timeRatio - yZero;
             drawLine(context, innerWidth / 2, -positionY, -innerWidth / 2, -positionY);
             context.fillText(time + "", -innerWidth / 2 + 10, -positionY)
 
@@ -632,14 +639,14 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             context.save()
             context.lineWidth = 1
             for (let i = 1; i < timeDivisor; i++) {
-                const minorPosY = (time + i / timeDivisor - beats) * timeRatio
+                const minorPosY = (time + i / timeDivisor - beats) * timeRatio - yZero;
                 drawLine(context, innerWidth / 2, -minorPosY, -innerWidth / 2, -minorPosY)
             }
             context.restore()
         }
         context.restore()
         context.lineWidth = 3;
-        drawLine(context, innerWidth / 2, 0, -innerWidth / 2, 0)
+        drawLine(context, innerWidth / 2, yZero, -innerWidth / 2, yZero)
         context.strokeStyle = "#EEE";
     }
     draw(beats?: number) {
@@ -668,8 +675,8 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
         }= this
         selectionManager.refresh()
         this.drawCoordination(beats)
-        const startBeats = beats - this.timeSpan / 2;
-        const endBeats = beats + this.timeSpan / 2;
+        const startBeats = beats - this.timeSpan * (0.5 + this.timeBasis);
+        const endBeats = beats + this.timeSpan * (0.5 + this.timeBasis);
         // 该数组用于自动调整网格
         // const valueArray = [];
 
@@ -734,6 +741,8 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
         const END_NODE_IMG = Images.END_NODE;
         
         let previousEndNode: EventEndNode<VT> | EventNodeLike<NodeType.HEAD, VT> = sequence.getNodeAt(startBeats < 0 ? 0 : startBeats).previous || sequence.head; // 有点奇怪的操作
+
+        const yZero = this.innerHeight * this.timeBasis;
 
         // 我很少用do while循环。这里确实不需要检查第一次，肯定至少画出一根
         do {
@@ -988,7 +997,7 @@ export class NumericEventCurveEditor extends EventSequenceEditor<number> {
             timeRatio,
             valueRatio
         } = this;
-        this.matrix = identity.scale(valueRatio, -timeRatio).translate(-medianOf(valueRange), 0);
+        this.matrix = identity.scale(valueRatio, -timeRatio).translate(-medianOf(valueRange), -this.timeSpan * this.timeBasis);
         this.matrixInverted = this.matrix.invert();
     }
     override drawCoordination(beats: number): void {
@@ -1315,7 +1324,7 @@ export class TextEventSequenceEditor extends EventSequenceEditor<string> {
                 
         const timeDivisor = this.parentEditorSet.timeDivisor;
         
-        const offsetBeats = -coord.y / (this.timeGridInterval * this.timeRatio); // 颜色事件编辑器没有第三层矩阵，因为没有值维度
+        const offsetBeats = (this.innerHeight * this.timeBasis - coord.y) / (this.timeGridInterval * this.timeRatio); // 颜色事件编辑器没有第三层矩阵，因为没有值维度
 
         const accurateBeats = offsetBeats + this.lastBeats;
         let pointedBeats = Math.floor(accurateBeats)
@@ -1421,7 +1430,7 @@ export class TextEventSequenceEditor extends EventSequenceEditor<string> {
 
     override calculatePos(beats: number, node: EventStartNode<string> | EventEndNode<string>, seqIndex: number, total: number): [number, number] {
         const x = ((seqIndex + 0.5) / total - 0.5) * this.innerWidth;
-        return [x, -(TC.toBeats(node.time) - beats) * this.timeRatio];
+        return [x, -(TC.toBeats(node.time) - beats) * this.timeRatio + this.innerHeight * this.timeBasis];
     }
 
     override strokeCurve(context: CanvasRenderingContext2D, startNode: NonLastStartNode<string>, endNode: EventEndNode<string>, startXY: [number, number], endXY: [number, number], beats: number): void {
@@ -1450,7 +1459,7 @@ export class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
                 
         const timeDivisor = this.parentEditorSet.timeDivisor;
         
-        const offsetBeats = -coord.y / (this.timeGridInterval * this.timeRatio); // 文本事件编辑器没有第三层矩阵，因为没有值维度
+        const offsetBeats = (this.timeBasis * this.innerHeight - coord.y) / (this.timeGridInterval * this.timeRatio); // 文本事件编辑器没有第三层矩阵，因为没有值维度
 
         const accurateBeats = offsetBeats + this.lastBeats;
         let pointedBeats = Math.floor(accurateBeats)
@@ -1556,7 +1565,7 @@ export class ColorEventSequenceEditor extends EventSequenceEditor<RGB> {
 
     override calculatePos(beats: number, node: EventStartNode<RGB> | EventEndNode<RGB>, seqIndex: number, total: number): [number, number] {
         const x = ((seqIndex + 0.5) / total - 0.5) * this.innerWidth;
-        return [x, -(TC.toBeats(node.time) - beats) * this.timeRatio];
+        return [x, -(TC.toBeats(node.time) - beats) * this.timeRatio + this.innerHeight * this.timeBasis];
     }
 
     override strokeCurve(context: CanvasRenderingContext2D, startNode: NonLastStartNode<RGB>, endNode: EventEndNode<RGB>, startXY: [number, number], endXY: [number, number], beats: number): void {
