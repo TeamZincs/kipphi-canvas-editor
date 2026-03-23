@@ -1,20 +1,20 @@
 {
-  "name": "kipphi-canvas-editor",
-  "version": "2.1.1",
-  "module": "index.ts",
-  "main": "index.js",
-  "type": "module",
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "kipphi": "^2.1.0",
-    "kipphi-player": "^2.1.0"
-  },
-  "repository": {
-    "url": "git+https://github.com/TeamZincs/kipphi-canvas-editor.git"
-  }
+    "name": "kipphi-canvas-editor",
+    "version": "2.1.2-rc.1",
+    "module": "index.ts",
+    "main": "index.js",
+    "type": "module",
+    "devDependencies": {
+        "@types/bun": "latest"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    },
+    "dependencies": {
+        "kipphi": "2.1.2-rc.1",
+        "kipphi-player": "2.1.2-rc.1"
+    },
+    "repository": {
+        "url": "git+https://github.com/TeamZincs/kipphi-canvas-editor.git"
+    }
 }
