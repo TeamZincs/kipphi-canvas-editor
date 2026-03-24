@@ -1,7 +1,7 @@
 import { HNList, JudgeLine, NNList, NNNList, NodeType, Note, NoteType, TC, TimeCalculator, type NNNOrTail, type NNOrTail, type NoteDataKPA, Op as O, type RGB, type TimeT, VERSION, NNNode, NoteNode } from "kipphi";
 import { Coordinate, drawLine, identity, Images, Matrix33, Respack, rgb } from "kipphi-player";
 import { SelectionManager } from "./selectionManager";
-import { computeAttach, getOffsetCoordFromEvent, on } from "./util";
+import { computeAttach, getCanvasCoordFromEvent, getOffsetCoordFromEvent, on } from "./util";
 
 
 
@@ -361,8 +361,7 @@ export class NotesEditor extends EventTarget {
         }
     }
     upHandler(event: TouchEvent | MouseEvent) {
-        const [offsetX, offsetY] = getOffsetCoordFromEvent(event, this.canvas);
-        const canvasCoord = new Coordinate(offsetX, offsetY).mul(this.canvasMatrixInverted);
+        const canvasCoord = getCanvasCoordFromEvent(event, this.canvas, this.elementMatrixInverted, this.canvasMatrixInverted)
         const {x, y} = canvasCoord.mul(this.matrixInverted);
         switch (this.state) {
             case NotesEditorState.selecting:
