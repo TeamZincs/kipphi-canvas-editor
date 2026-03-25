@@ -51,7 +51,8 @@ export enum NotesEditorState {
     /** 已选取范围 */
     selectingScope,
     /** 拖拽（？） */
-    flowing
+    flowing,
+    placingHold
 }
 
 class HoldTail {
@@ -197,6 +198,10 @@ export class NotesEditor extends EventTarget {
                     this.selectState = SelectState.none;
                     this.draw();
                 }
+            } else if (e.key === "r") {
+                this.state = NotesEditorState.select;
+                this.selectState = SelectState.none;
+                this.draw();
             }
         });
 
@@ -240,7 +245,6 @@ export class NotesEditor extends EventTarget {
             case "q":
             case "w":
             case "e":
-            case "r":
                 if (e.ctrlKey) {
                     return;
                 }
@@ -260,9 +264,16 @@ export class NotesEditor extends EventTarget {
                 } as NoteDataKPA;
                 const note = Note.fromKPAJSON(createOptions, null); // 这里只能用visibleBeats创建，因此不需要tc
                 // this.editor.chart.getComboInfoEntity(startTime).add(note)
-                this.operationList.do(new O.NoteAddOperation(note, this.target.getNode(note, true)));
+                this.operationList.tryDo(() => new O.NoteAddOperation(note, this.target.getNode(note, true)));
+                break;
+            case "r":
+                if (this.state !== NotesEditorState.select && this.state !== NotesEditorState.edit) {
+                    return;
+                }
+                this.state = NotesEditorState.placingHold;
                 break;
         }
+        this.draw();
     }
     moveHandler(event: TouchEvent | MouseEvent) {
         const [offsetX, offsetY] = getOffsetCoordFromEvent(event, this.canvas);
@@ -289,11 +300,11 @@ export class NotesEditor extends EventTarget {
                     console.warn("Unexpected error: selected note does not exist");
                     break;
                 }
-                this.operationList.do(new O.NotePropChangeOperation(this.selectedNote, "positionX", this.pointedPositionX))
+                this.operationList.tryDo(() => new O.NotePropChangeOperation(this.selectedNote, "positionX", this.pointedPositionX))
                 if (this.selectingTail) {
-                    this.operationList.do(new O.HoldEndTimeChangeOperation(this.selectedNote, timeT))
+                    this.operationList.tryDo(() => new O.HoldEndTimeChangeOperation(this.selectedNote, timeT))
                 } else {
-                    this.operationList.do(new O.NoteTimeChangeOperation(this.selectedNote, this.selectedNote.parentNode.parentSeq.getNodeOf(timeT)))
+                    this.operationList.tryDo(() => new O.NoteTimeChangeOperation(this.selectedNote, this.selectedNote.parentNode.parentSeq.getNodeOf(timeT)))
                 }
                 
 
@@ -328,8 +339,9 @@ export class NotesEditor extends EventTarget {
                 this.wasEditing = false;
                 break;
             case NotesEditorState.edit:
+            case NotesEditorState.placingHold:
                 const startTime: TimeT = this.pointedTime;
-                const endTime: TimeT = this.noteType === NoteType.hold ? [startTime[0] + 1, 0, 1] : [...startTime]
+                const endTime: TimeT = this.noteType === NoteType.hold || this.state === NotesEditorState.placingHold ? TC.validateIp([startTime[0], startTime[1] + 1, startTime[2]]) : [...startTime]
                 const createOptions: NoteDataKPA = {
                     ...this.defaultNoteConfig,
                     endTime: endTime,
@@ -337,11 +349,11 @@ export class NotesEditor extends EventTarget {
                     positionX: this.pointedPositionX,
                     above: this.noteAbove ? 1 : 0,
                     speed: this.targetNNList?.speed || undefined,
-                    type: this.noteType
+                    type: this.state === NotesEditorState.placingHold ? NoteType.hold : this.noteType
                 } as NoteDataKPA;
                 const note = Note.fromKPAJSON(createOptions, null); // 这里只能用visibleBeats创建，因此不需要tc
                 // this.editor.chart.getComboInfoEntity(startTime).add(note)
-                this.operationList.do(new O.NoteAddOperation(
+                this.operationList.tryDo(() => new O.NoteAddOperation(
                     note,
                     this.target.getNode(note, true)
                 ));
@@ -517,7 +529,7 @@ export class NotesEditor extends EventTarget {
             context.fillText(time + "", +width / 2, -positionY - 4)
 
             attachableTimes.push(time);
-            map.set(time, [time, 0, 1]);
+            map.set(time, [time, 0, timeDivisor]);
             
             context.lineWidth = 1
             for (let i = 1; i < timeDivisor; i++) {
@@ -871,7 +883,7 @@ export class NotesEditor extends EventTarget {
 
         
         const newNotes: Note[] = notes.map(n => n.clone(offset));
-        this.operationList.do(new O.MultiNoteAddOperation(newNotes, this.target));
+        this.operationList.tryDo(() => new O.MultiNoteAddOperation(newNotes, this.target));
         this.notesSelection = new Set<Note>(newNotes);
         this.dispatchEvent(new KPANoteScopselectedEvent(this.notesSelection))
     }
