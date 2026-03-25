@@ -872,6 +872,8 @@ export class NotesEditor extends EventTarget {
         
         const newNotes: Note[] = notes.map(n => n.clone(offset));
         this.operationList.do(new O.MultiNoteAddOperation(newNotes, this.target));
+        this.notesSelection = new Set<Note>(newNotes);
+        this.dispatchEvent(new KPANoteScopselectedEvent(this.notesSelection))
     }
     copy(): void {
         this.clipboard = this.notesSelection;
