@@ -204,7 +204,16 @@ export class EventSequenceEditors {
             targetLine.speedSequence
             ??= chart.createEventNodeSequence(EventType.speed, `#${targetLine.id}.speed`) as SpeedENS;
 
+        const oldTargetLine = this.targetLine;
+        const oldSelectedLayer = this.selectedLayer;
+            
+        this.targetLine = targetLine;
+        this.selectedLayer = targetLayer;
+
         if (targetLayer !== "ex") {
+            if (oldSelectedLayer === "ex") {
+                this.activatedEditor = this.moveX;
+            }
             // 前四个类型
             (["moveX", "moveY", "alpha", "rotate"] as const).forEach((type) => {
                 const seq = this[type];
@@ -215,6 +224,9 @@ export class EventSequenceEditors {
                 
             });
         } else {
+            if (oldSelectedLayer !== "ex") {
+                this.activatedEditor = this.scaleX;
+            }
             // 缩放
             (["scaleX", "scaleY"] as const).forEach((type) => {
                 const seq = this[type];
@@ -242,8 +254,6 @@ export class EventSequenceEditors {
         
 
         
-        this.targetLine = targetLine;
-        this.selectedLayer = targetLayer;
         this.draw()
     }
     
@@ -685,7 +695,10 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
         let len: number;
         if (
             line &&
-            [EventType.moveX, EventType.moveY, EventType.alpha, EventType.rotate, EventType.speed].includes(this.type)
+            [
+                EventType.moveX, EventType.moveY, EventType.alpha, EventType.rotate, EventType.speed,
+                EventType.scaleX, EventType.scaleY, EventType.color
+            ].includes(this.type)
             && !line.group.isDefault()
         ) {
             const group = line.group;
@@ -694,11 +707,13 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             context.font = "25px Phigros"
             len = group.judgeLines.length;
             for (let i = 0; i < len; i++) {
-                const judgeLine = group.judgeLines[i];
+                const judgeLine = group.judgeLines[i]!;
                 if (judgeLine === line) { // 跳过本判定线，因为它在最后绘制
                     continue;
                 }
-                const sequence = this.type === EventType.speed ? judgeLine.speedSequence : judgeLine.eventLayers[parent.selectedLayer][EventType[this.type]];
+                const sequence = this.type === EventType.speed ? judgeLine.speedSequence
+                    : parent.selectedLayer === "ex" ? judgeLine.extendedLayer[EventType[this.type]]
+                    : judgeLine.eventLayers[parent.selectedLayer][EventType[this.type]];
                 if (!sequence) {
                     continue;
                 }
@@ -946,7 +961,7 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
 
     // begin 这些也是内部使用，但是活得久（可能）
     /** 上次渲染时的拍数 */
-    protected lastBeats: number;
+    public lastBeats: number;
     protected mouseIn: boolean;
 
 
@@ -967,6 +982,9 @@ export class NumericEventCurveEditor extends EventSequenceEditor<number> {
     valueRatio: number;
     valueGridColor = "rgb(255, 170, 120)";
     valueRange: readonly [number, number];
+    
+    valueGridInterval: number | undefined;
+    
 
     constructor(
         type: Exclude<EventType, EventType.text | EventType.color>,
@@ -1232,6 +1250,9 @@ export class NumericEventCurveEditor extends EventSequenceEditor<number> {
     }
     override draw(beats?: number): void {
         this.valuesInFrame = []; // 重置
+        if (this.valueGridInterval) {
+            this.attachableValues = generateAttachable([this.valueGridInterval, 0], this.valueRange);
+        }
         super.draw(beats);
         this.adjust(this.valuesInFrame);
     }
@@ -1273,24 +1294,28 @@ export class NumericEventCurveEditor extends EventSequenceEditor<number> {
 
         // 计算合适的valueGridSpan
         // 根据这个值能够整除多少个值。
-        let priority = 0;
-        let valueGridSpan = eventTypeMap[this.type].valueGridSpan;
-        const len = values.length;
-        for (let i = 0; i < len; i++) {
-            const v = values[i];
-            if (v === 0) {
-                continue;
-            }
-            const p = values.reduce((acc, cur) => {
-                return cur % v === 0 ? acc + 1 : acc
-            });
-            if (p > priority * 1.2) {
-                priority = p;
-                valueGridSpan = v;
-            }
-        }
-        valueGridSpan = divideOrMul(valueGridSpan, 10 / (lengthOf(this.valueRange) / valueGridSpan));
         
+        let valueGridSpan = eventTypeMap[this.type]!.valueGridSpan;
+        if (this.valueGridInterval) {
+            valueGridSpan = this.valueGridInterval;
+        } else {
+            let priority = 0;
+            const len = values.length;
+            for (let i = 0; i < len; i++) {
+                const v = values[i];
+                if (v === 0) {
+                    continue;
+                }
+                const p = values.reduce((acc, cur) => {
+                    return cur % v === 0 ? acc + 1 : acc
+                });
+                if (p > priority * 1.2) {
+                    priority = p;
+                    valueGridSpan = v;
+                }
+            }
+            valueGridSpan = divideOrMul(valueGridSpan, 10 / (lengthOf(this.valueRange) / valueGridSpan));
+        }
         if (distinctValueCount > 10) {
             this.attachableValues = generateAttachable([valueGridSpan, 0], this.valueRange);
         } else {
