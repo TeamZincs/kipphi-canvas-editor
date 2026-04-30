@@ -3,7 +3,7 @@ import { SelectionManager } from "./selectionManager";
 import { drawBezierCurve, getCanvasCoordFromEvent, getOffsetCoordFromEvent, on } from "./util";
 import { KPAEvent } from "./notesEditor";
 
-const BEZIER_POINT_SIZE = 10;
+const BEZIER_POINT_SIZE = 30;
 const HALF_BEZIER_POINT_SIZE = BEZIER_POINT_SIZE / 2;
 enum BezierEditorState {
     select,
@@ -13,7 +13,7 @@ enum BezierEditorState {
 
 /** 编辑三次贝塞尔曲线 */
 export class BezierEditor extends EventTarget {
-    size = 100;
+    size = 300;
     context: CanvasRenderingContext2D;
     canvas = document.createElement("canvas");
     selectionManager = new SelectionManager<"start" | "end">();
@@ -24,7 +24,7 @@ export class BezierEditor extends EventTarget {
     private observer: ResizeObserver;
     constructor() {
         super();
-        this.canvas.width = this.canvas.height = 100;
+        this.canvas.width = this.canvas.height = this.size;
         this.context = this.canvas.getContext("2d");
         on(["mousedown", "touchstart"], this.canvas, (e) => {
             this.downHandler(e);
@@ -34,7 +34,7 @@ export class BezierEditor extends EventTarget {
             this.moveHandler(e);
             this.update();
         });
-        on(["mouseup", "touchend"], this.canvas, (e) => {
+        on(["mouseup", "touchend", "mouseleave"], this.canvas, (e) => {
             this.upHandler(e);
             this.update();
         });
@@ -66,10 +66,10 @@ export class BezierEditor extends EventTarget {
         context.fillRect(0, 0, size, size);
 
         context.fillStyle = "#EEE";
-        context.font = "12px Phigros"
-        context.fillText(`${startPoint.x.toFixed(2)} ${startPoint.y.toFixed(2)}`, 5, 20);
-        context.fillText(`${endPoint.x.toFixed(2)} ${endPoint.y.toFixed(2)}`, 5, 30);
-        context.fillText(BezierEditorState[this.state], 5, 40);
+        context.font = "36px Phigros"
+        context.fillText(`${startPoint.x.toFixed(2)} ${startPoint.y.toFixed(2)}`, 20, 60);
+        context.fillText(`${endPoint.x.toFixed(2)} ${endPoint.y.toFixed(2)}`, 20, 90);
+        context.fillText(BezierEditorState[this.state], 20, 120);
 
         context.strokeStyle = "#EE7";
         context.lineWidth = 5;
