@@ -239,6 +239,9 @@ export class NotesEditor extends EventTarget {
             case "v":
                 this.paste();
                 break;
+            case "x":
+                this.paste(true);
+                break;
             case "c":
                 this.copy();
                 break;
@@ -866,7 +869,7 @@ export class NotesEditor extends EventTarget {
     }
 
 
-    paste() {
+    paste(deletesOriginal: boolean = false) {
         const {clipboard, lastBeats} = this;
         if (!clipboard || clipboard.size === 0) {
             return;
@@ -883,7 +886,16 @@ export class NotesEditor extends EventTarget {
 
         
         const newNotes: Note[] = notes.map(n => n.clone(offset));
-        this.operationList.tryDo(() => new O.MultiNoteAddOperation(newNotes, this.target));
+        if (deletesOriginal) {
+            this.operationList.tryDo(() => 
+                new O.ComplexOperation(
+                    new O.MultiNoteAddOperation(newNotes, this.target),
+                    new O.MultiNoteDeleteOperation(notes)
+                )
+            )
+        } else {
+            this.operationList.tryDo(() => new O.MultiNoteAddOperation(newNotes, this.target));
+        }
         this.notesSelection = new Set<Note>(newNotes);
         this.dispatchEvent(new KPANoteScopselectedEvent(this.notesSelection))
     }
