@@ -770,20 +770,22 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             const endXY = this.calculatePos(beats, endNode, index, total);
             const [startX, startY] = startXY;
             const [endX, endY] = endXY;
-            const topY = startY - NODE_HEIGHT / 2;
-            const topEndY = endY - NODE_HEIGHT / 2;
+            const topY = startY;
+            const topEndY = endY;
+            const leftX = startX - NODE_WIDTH / 2; 
+            const leftEndX = endX - NODE_WIDTH / 2;
 
             selectionManager.add({
                 target: startNode,
-                left: startX,
-                top: topY,
+                left: leftX,
+                top: topY - NODE_HEIGHT,
                 width: NODE_WIDTH,
                 height: NODE_HEIGHT,
                 priority: 1
             })
             selectionManager.add({
                 target: endNode,
-                left: endX - NODE_WIDTH,
+                left: leftEndX,
                 top: topEndY,
                 width: NODE_WIDTH,
                 height: NODE_HEIGHT,
@@ -802,8 +804,8 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             if (selected) {
                 context.restore()
             }
-            context.drawImage(START_NODE_IMG, startX, topY, NODE_WIDTH, NODE_HEIGHT)
-            context.drawImage(END_NODE_IMG, endX - NODE_WIDTH, topEndY, NODE_WIDTH, NODE_HEIGHT)
+            context.drawImage(START_NODE_IMG, leftX, topY - NODE_HEIGHT, NODE_WIDTH, NODE_HEIGHT)
+            context.drawImage(END_NODE_IMG, leftEndX, topEndY, NODE_WIDTH, NODE_HEIGHT)
             // console.log(this.type, EventType.speed)
             if (this.type === EventType.speed) {
                 // console.log(startNode)
@@ -819,7 +821,7 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             const lastStart = previousEndNode.next;
             const startXY = this.calculatePos(beats, lastStart, index, total);
             const [startX, startY] = startXY;
-            const topY = startY - NODE_HEIGHT / 2;
+            const topY = startY - NODE_HEIGHT;
             const selected = this.nodesSelection.has(lastStart)
             if (selected) {
                 context.save()
@@ -829,10 +831,10 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             if (selected) {
                 context.restore()
             }
-            context.drawImage(START_NODE_IMG, startX, startY - NODE_HEIGHT / 2, NODE_WIDTH, NODE_HEIGHT)
+            context.drawImage(START_NODE_IMG, startX - NODE_WIDTH / 2, startY - NODE_HEIGHT, NODE_WIDTH, NODE_HEIGHT)
             selectionManager.add({
                 target: lastStart,
-                left: startX,
+                left: startX - NODE_WIDTH / 2,
                 top: topY,
                 width: NODE_WIDTH,
                 height: NODE_HEIGHT,
