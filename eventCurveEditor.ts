@@ -75,7 +75,7 @@ const eventTypeMap = [
 type EventTypeName = "moveX" | "moveY" | "alpha" | "rotate" | "speed" | "easing" | "bpm" | "scaleX" | "scaleY" | "text" | "color";
 type ExtendedEventTypeName = "scaleX" | "scaleY" | "text" | "color"
 
-enum NewNodeState {
+export enum NewNodeState {
     controlsStart,
     controlsEnd,
     controlsBoth
