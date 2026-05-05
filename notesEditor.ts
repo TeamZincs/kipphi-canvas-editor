@@ -129,7 +129,11 @@ export class NotesEditor extends EventTarget {
         size: 1.0,
         speed: 1.0,
         absoluteYOffset: 0,
-        visibleBeats: undefined as number
+        visibleBeats: undefined as number,
+        tintHitEffects: undefined as RGB,
+        tint: undefined as RGB,
+        judgeSize: 1.0,
+        isAbove: 0 | 1,
     }
 
 // 私有属性我全给写后边了，请翻到最末尾
@@ -351,7 +355,7 @@ export class NotesEditor extends EventTarget {
                     startTime: startTime,
                     positionX: this.pointedPositionX,
                     above: this.noteAbove ? 1 : 0,
-                    speed: this.targetNNList?.speed || undefined,
+                    speed: this.targetNNList?.speed || this.defaultNoteConfig.speed,
                     type: this.state === NotesEditorState.placingHold ? NoteType.hold : this.noteType
                 } as NoteDataKPA;
                 const note = Note.fromKPAJSON(createOptions, null); // 这里只能用visibleBeats创建，因此不需要tc
@@ -871,7 +875,7 @@ export class NotesEditor extends EventTarget {
     }
 
 
-    paste(deletesOriginal: boolean = false) {
+    paste(deletesOriginal: boolean = false, keepOriginalList: boolean = false) {
         const {clipboard, lastBeats} = this;
         if (!clipboard || clipboard.size === 0) {
             return;
@@ -913,15 +917,15 @@ export class NotesEditor extends EventTarget {
                 )
             }
         } else {    
-        if (deletesOriginal) {
-            this.operationList.tryDo(() => 
-                new O.ComplexOperation(
-                    new O.MultiNoteAddOperation(newNotes, this.target),
-                    new O.MultiNoteDeleteOperation(notes)
+            if (deletesOriginal) {
+                this.operationList.tryDo(() => 
+                    new O.ComplexOperation(
+                        new O.MultiNoteAddOperation(newNotes, this.target),
+                        new O.MultiNoteDeleteOperation(notes)
+                    )
                 )
-            )
-        } else {
-            this.operationList.tryDo(() => new O.MultiNoteAddOperation(newNotes, this.target));
+            } else {
+                this.operationList.tryDo(() => new O.MultiNoteAddOperation(newNotes, this.target));
             }
         }
         this.notesSelection = new Set<Note>(newNotes);
