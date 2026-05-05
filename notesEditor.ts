@@ -364,9 +364,9 @@ export class NotesEditor extends EventTarget {
                 if (note.type === NoteType.hold) {
                     this.selectingTail = true;
                 }
+                this.wasEditing = this.state === NotesEditorState.edit;
                 this.state = NotesEditorState.selecting;
                 this.dispatchEvent(new KPANoteSelectedEvent(this.selectedNote));
-                this.wasEditing = true;
                 break;
             case NotesEditorState.selectScope:
                 this.startingPoint = coord;
@@ -407,6 +407,8 @@ export class NotesEditor extends EventTarget {
                 }
                 this.state = NotesEditorState.selectScope;
                 break;
+            case NotesEditorState.placingHold:
+                this.state = NotesEditorState.select;
         }
     }
     updateMatrix() {
