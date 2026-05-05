@@ -237,10 +237,10 @@ export class NotesEditor extends EventTarget {
         }
         switch (e.key.toLowerCase()) {
             case "v":
-                this.paste();
+                this.paste(false, e.ctrlKey);
                 break;
             case "x":
-                this.paste(true);
+                this.paste(true, e.ctrlKey);
                 break;
             case "c":
                 this.copy();
@@ -886,6 +886,31 @@ export class NotesEditor extends EventTarget {
 
         
         const newNotes: Note[] = notes.map(n => n.clone(offset));
+        if (keepOriginalList) {
+            if (notes.some(n => !n.parentNode)) {
+                return;
+            }
+            if (deletesOriginal) {
+                this.operationList.tryDo(() =>
+                    new O.ComplexOperation(
+                        new O.ComplexOperation(
+                            ...newNotes.map((n, i) => {
+                                return new O.NoteAddOperation(n, notes[i]!.parentNode.parentSeq.getNodeOf(n.startTime))
+                            })
+                        ),
+                        new O.MultiNoteDeleteOperation(notes)
+                    )
+                )
+            } else {
+                this.operationList.tryDo(() =>
+                    new O.ComplexOperation(
+                        ...newNotes.map((n, i) => {
+                            return new O.NoteAddOperation(n, notes[i]!.parentNode.parentSeq.getNodeOf(n.startTime))
+                        })
+                    )
+                )
+            }
+        } else {    
         if (deletesOriginal) {
             this.operationList.tryDo(() => 
                 new O.ComplexOperation(
@@ -895,6 +920,7 @@ export class NotesEditor extends EventTarget {
             )
         } else {
             this.operationList.tryDo(() => new O.MultiNoteAddOperation(newNotes, this.target));
+            }
         }
         this.notesSelection = new Set<Note>(newNotes);
         this.dispatchEvent(new KPANoteScopselectedEvent(this.notesSelection))

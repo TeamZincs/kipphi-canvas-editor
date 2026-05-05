@@ -513,10 +513,13 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
             }
             switch (e.key.toLowerCase()) {
                 case "v":
-                    this.paste();
+                    this.paste(false, e.ctrlKey);
                     break;
                 case "c":
                     this.copy();
+                    break;
+                case "x":
+                    this.paste(true, e.ctrlKey);
                     break;
                 case "r":
                     if (e.ctrlKey) {
@@ -866,7 +869,7 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
         startXY: [number, number],
     ): void;
 
-    paste() {
+    paste(deletesOriginal = false, keepOriginalSeq = false) {
         if (!this.active) {
             return;
         }
@@ -889,8 +892,31 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
         const dest: TimeT = this.pointedTime
 
         
-        const [_, newNodes] = EventNode.setToNewOrderedArray(dest, clipboard);
-        this.operationList.do(new O.MultiNodeAddOperation(newNodes, this.target));
+        const [originalArr, newNodes] = EventNode.setToNewOrderedArray(dest, clipboard);
+
+        const returnComplex = () => !keepOriginalSeq
+            ? deletesOriginal
+                ? new O.ComplexOperation(
+                    new O.MultiNodeAddOperation(newNodes, this.target),
+                    new O.MultiNodeDeleteOperation(originalArr)
+                )
+                : new O.MultiNodeAddOperation(newNodes, this.target)
+            : deletesOriginal
+                ? new O.ComplexOperation(
+                    new O.ComplexOperation(
+                        ...newNodes.map((n, i) => {
+                            return O.EventNodePairAutoInsertOperation.lazy(n as any, originalArr[i]!.parentSeq)
+                        })
+                    ),
+                    new O.MultiNodeDeleteOperation(originalArr)
+                )
+                : new O.ComplexOperation(
+                        ...newNodes.map((n, i) => {
+                            return O.EventNodePairAutoInsertOperation.lazy(n as any, originalArr[i]!.parentSeq)
+                        })
+                    );
+
+        this.operationList.tryDo(returnComplex);
         
         this.nodesSelection = new Set<EventStartNode<VT>>(newNodes);
         this.dispatchEvent(new KPANodeScopeselectedEvent(this.nodesSelection));
