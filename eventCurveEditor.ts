@@ -619,7 +619,7 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
         // const basis = -medianOf(valueRange) / lengthOf(valueRange) * this.innerHeight;
         // 计算上下界
         context.save()
-        context.fillStyle = "#EEE"
+        context.fillStyle = "#AAA"
         context.font = "30px phigros"
         const textPosX = -this.innerWidth / 2 + 10;
         const canvasPoint = this.canvasPoint;
@@ -631,8 +631,15 @@ export abstract class EventSequenceEditor<VT extends EventValueESType> extends E
         context.fillText("Beats: " + beats.toFixed(4), textPosX, -60)
         const pointedTime = this.pointedTime;
         if (pointedTime) {
-            context.fillText(`pointedTime: ${pointedTime[0]}:${pointedTime[1]}/${pointedTime[2]}`, textPosX, -30);
+            context.fillText(`PointedTime: ${pointedTime[0]}:${pointedTime[1]}/${pointedTime[2]}`, textPosX, -30);
         }
+        context.fillText(`Selected: ${this.nodesSelection.size}`, textPosX, 30);
+        context.fillText(`Scope-select Mode: ${
+            this.state === EventCurveEditorState.selecting ? SelectState[this.selectState] : SelectState[this.lastSelectState]
+        }`, textPosX, 60);
+        if (this.clipboard.size > 0)
+            context.fillText(`Copied: ${this.clipboard.size}`, textPosX, 90);
+
         context.restore()
         context.save()
         context.strokeStyle = this.timeGridColor;

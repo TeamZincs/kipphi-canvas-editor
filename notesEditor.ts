@@ -475,7 +475,7 @@ export class NotesEditor extends EventTarget {
         context.fillText("MIT Licensed", textPosX, -10)
 
 
-        context.fillStyle = "#EEE";
+        context.fillStyle = "#AAA";
         
         //*
         const pointedTime = this.pointedTime;
@@ -490,6 +490,13 @@ export class NotesEditor extends EventTarget {
             context.fillText(`PointedTime: ${pointedTime[0]}:${pointedTime[1]}/${pointedTime[2]}`, textPosX, -height + 100);
         if (pointedPositionX !== undefined)
             context.fillText(`PointedPosition: ${pointedPositionX}`, textPosX, -height + 130);
+        context.fillText(`Selected: ${this.notesSelection.size}`, textPosX, -height + 160);
+        context.fillText(`Scope-select Mode: ${
+            this.state === NotesEditorState.selectScope ? SelectState[this.selectState] : SelectState[this.lastSelectState]
+        }`, textPosX, -height + 190);
+        if (this.clipboard?.size > 0) {
+            context.fillText(`Copied: ${this.clipboard.size}`, textPosX, -height + 220);
+        }
         if (this.targetNNList && this.targetNNList.timeRanges) {
             context.fillText(
                 `Range: ${
